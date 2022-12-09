@@ -3,7 +3,7 @@
 # Objective: Understand if high performing countries such as Liberia 
 #successfully addressed “missed opportunities” for dpt, and which factor are 
 #significantly associated with MOV 
-# date: Last modified 12/04/22
+# date: Last modified 12/08/22
 
 #Libraries:
 library(aod)
@@ -13,6 +13,7 @@ library(tibble)
 
 #libraries for visualizations 
 library(broom)
+library("gridExtra")
 library(tidyverse)
 library(pixiedust)
 library(kableExtra)
@@ -42,9 +43,10 @@ mylogit_Lib <- glm(dpt_missed_opportunity ~ wom_agecat + edu + female_head + lit
 summary(mylogit_Lib)
 
 #making a table with the results of the regression: 
-dust(mylogit_Lib) %>%
-  sprinkle(col = 2:4, round = 3) %>%
-  sprinkle(col = 5, fn = quote(pvalString(value))) %>%
+tidy(mylogit_Nig)
+
+dust(mylogit_Nig) %>%
+  sprinkle_print_method("console") %>%
   kable() %>%
   kable_styling()
 
@@ -53,27 +55,27 @@ confint.default(mylogit_Lib)
 
 #wald test: 
 #for age of mother:
-Chi2_age = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 2:3)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 2:3)
 #for education level: 
-Chi2_edu = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 4:5)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 4:5)
 #for sex of head of house: 
-Chi2_house = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 6)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 6)
 #Literacy levels: 
-Chi2_lit = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 7)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 7)
 #Total nb of children born: 
-Chi2_children = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 8:10)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 8:10)
 #respondents occupation: 
-Chi2_occ = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 11)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 11)
 #maritial status: 
-Chi2_mar = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 12:14)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 12:14)
 #household size: 
-Chi2_housesize = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 15)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 15)
 #Wealth index: 
-Chi2_wealth = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 16:19)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 16:19)
 #urban vs. rural: 
-Chi2_urbvrur = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 20)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 20)
 #year: 
-Chi2_year = wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 21)
+wald.test(b = coef(mylogit_Lib), Sigma = vcov(mylogit_Lib), Terms = 21)
 
 #calculating the odds ratios and the 95% CI: 
 OR_CI_data_Lib = exp(cbind(OR = coef(mylogit_Lib), confint(mylogit_Lib)))
@@ -94,6 +96,9 @@ dat_FP_Lib <- data.frame(
   CI_Lower = CI_Lib_2.5,
   CI_Upper = CI_Lib_97.5
 )
+dat_FP_Lib$CI_Lower_round <- round(dat_FP_Lib$CI_Lower ,digit=2)
+dat_FP_Lib$CI_Upper_round <- round(dat_FP_Lib$CI_Upper ,digit=2)
+dat_FP_Lib$CI <- paste(dat_FP_Lib$CI_Lower_round, dat_FP_Lib$CI_Upper_round)
 dat_FP_Lib
 
 FP_Lib <- ggplot(dat_FP_Lib, aes(y = Index, x = OR)) +
@@ -101,7 +106,7 @@ FP_Lib <- ggplot(dat_FP_Lib, aes(y = Index, x = OR)) +
   geom_errorbarh(aes(xmin = CI_Lower, xmax = CI_Upper), height = 0.25) +
   geom_vline(xintercept = 1, color = "purple", linetype = "dashed", cex = 1, alpha = 0.5) +
   scale_y_continuous(name = "", breaks=1:21, labels = dat_FP_Lib$label, trans = "reverse") +
-  xlab("Odds Ratio (97.5% CI)") + 
+  xlab("Odds Ratio (95% CI)") + 
   ylab(" ") + 
   theme_bw() +
   theme(panel.border = element_blank(),
@@ -113,6 +118,38 @@ FP_Lib <- ggplot(dat_FP_Lib, aes(y = Index, x = OR)) +
         axis.text.x.bottom = element_text(size = 12, colour = "black"),
         axis.title.x = element_text(size = 12, colour = "black"))
 FP_Lib
+
+#adding CI and OR values to graph: 
+table_base <- ggplot(dat_FP_Lib, aes(y=label)) +
+  ylab(NULL) + xlab("  ") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12), 
+        axis.text.x = element_text(color="white", hjust = -3, size = 25), ## This is used to help with alignment
+        axis.line = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(),
+        axis.title.y = element_blank(), 
+        legend.position = "none",
+        panel.background = element_blank(), 
+        panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        plot.background = element_blank())
+
+## OR point estimate table
+tab1 <- table_base + 
+  labs(title = "space") +
+  geom_text(aes(y = rev(Index), x = 1, label = sprintf("%0.1f", round(OR, digits = 1))), size = 4) + ## decimal places
+  ggtitle("OR")
+
+## 95% CI table
+tab2 <- table_base +
+  geom_text(aes(y = rev(Index), x = 1, label = CI), size = 4) + 
+  ggtitle("95% CI")
+
+#Combining the plot with the tables: 
+lay <-  matrix(c(1,1,1,1,1,1,1,1,1,1,2,3,3), nrow = 1)
+grid.arrange(FP_Lib, tab1, tab2, layout_matrix = lay)
+
 #STEP 2: Making predictions based on year: 
 #we're keeping all the other variables except for strata constant. 
 
@@ -132,4 +169,88 @@ pred_prob_data_Lib <- with(dt_Lib, data.frame(wom_agecat = "20-34", edu = "No ed
 pred_prob_data_Lib
 pred_prob_data_Lib$strataP <- predict(mylogit_Lib, newdata = pred_prob_data_Lib, type = "response")
 pred_prob_data_Lib
+
+#making a graph to see the predicted probabilities with education as the independent variable 
+#creating 100 values for each variable 
+pred_prob_edu <- with(dt_Lib, data.frame(edu = factor(rep(unique(dt_Lib$edu), length.out= 100)),
+                                         wom_agecat = factor(rep(c("20-34"), each = 100)), female_head = factor(rep(c("Female"), each =100)),
+                                         literate = factor(rep(c("Iliterate"), each = 100)), total_children_born = factor(rep(c("2-3 children"), each = 100)),
+                                         wom_occ = factor(rep(c("Employed"), each =100)), marital = factor(rep(c("Married"), each = 100)), hhsize = mean(hhsize), 
+                                         assets = factor(rep(c("Quintile 1"), each = 100)), urban = factor(rep(c("Rural household"), each = 100)),
+                                         strata = factor(rep(unique(dt_Lib$strata), each = 50, length.out = 100))))
+
+pred_prob_tot_child <- with(dt_Lib, data.frame(edu = factor(rep(c("No education"), each= 100)),
+                                         wom_agecat = factor(rep(c("20-34"), each = 100)), female_head = factor(rep(c("Female"), each =100)),
+                                         literate = factor(rep(c("Iliterate"), each = 100)), total_children_born = factor(rep(unique(dt_Lib$total_children_born), each = 100)),
+                                         wom_occ = factor(rep(c("Employed"), each =100)), marital = factor(rep(c("Married"), each = 100)), hhsize = mean(hhsize), 
+                                         assets = factor(rep(c("Quintile 1"), each = 100)), urban = factor(rep(c("Rural household"), each = 100)),
+                                         strata = factor(rep(unique(dt_Lib$strata), each = 50, length.out = 100))))
+
+pred_prob_marital <- with(dt_Lib, data.frame(edu = factor(rep(c("No education"), each= 100)),
+                                         wom_agecat = factor(rep(c("20-34"), each = 100)), female_head = factor(rep(c("Female"), each =100)),
+                                         literate = factor(rep(c("Iliterate"), each = 100)), total_children_born = factor(rep(c("2-3 children"), each = 100)),
+                                         wom_occ = factor(rep(c("Employed"), each =100)), marital = factor(rep(unique(dt_Lib$marital), length.out = 100)), hhsize = mean(hhsize), 
+                                         assets = factor(rep(c("Quintile 1"), each = 100)), urban = factor(rep(c("Rural household"), each = 100)),
+                                         strata = factor(rep(unique(dt_Lib$strata), each = 50, length.out = 100))))
+
+#calculating the predicted probs and the standard errors: 
+pred_prob_edu <- cbind(pred_prob_edu, predict(mylogit_Lib, newdata = pred_prob_edu, type = "link",
+                                              se = TRUE))
+pred_prob_edu <- within(pred_prob_edu, {
+  PredictedProb <- plogis(fit)
+  LL <- plogis(fit - (1.96 * se.fit))
+  UL <- plogis(fit + (1.96 * se.fit))
+})
+head(pred_prob_edu)
+
+pred_prob_tot_child <- cbind(pred_prob_tot_child, predict(mylogit_Lib, newdata = pred_prob_tot_child, type = "link",
+                                              se = TRUE))
+pred_prob_tot_child <- within(pred_prob_tot_child, {
+  PredictedProb <- plogis(fit)
+  LL <- plogis(fit - (1.96 * se.fit))
+  UL <- plogis(fit + (1.96 * se.fit))
+})
+head(pred_prob_tot_child)
+
+
+pred_prob_marital <- cbind(pred_prob_marital, predict(mylogit_Lib, newdata = pred_prob_marital, type = "link",
+                                                    se = TRUE))
+pred_prob_marital <- within(pred_prob_marital, {
+  PredictedProb <- plogis(fit)
+  LL <- plogis(fit - (1.96 * se.fit))
+  UL <- plogis(fit + (1.96 * se.fit))
+})
+head(pred_prob_marital)
+
+#making a graph with the predictions: 
+p_edu <- ggplot(pred_prob_edu, aes(x=edu, y=PredictedProb, fill=strata)) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=LL, ymax=UL), width=.2,
+                position=position_dodge(.9))
+
+p_edu + scale_fill_brewer(palette="Paired") + theme_minimal()
+
+p_tot_child <- ggplot(pred_prob_tot_child, aes(x= total_children_born, y=PredictedProb, fill=strata)) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=LL, ymax=UL), width=.2,
+                position=position_dodge(.9))
+
+p_tot_child + scale_fill_brewer(palette="Paired") + theme_minimal()
+
+p_marital <- ggplot(pred_prob_marital, aes(x=marital, y=PredictedProb, fill=strata)) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=LL, ymax=UL), width=.2,
+                position=position_dodge(.9))
+
+p_marital + scale_fill_brewer(palette="Paired") + theme_minimal()
+
+# measuring how well our logistic reg model fit (test statistic) 
+with(mylogit_Lib, null.deviance - deviance)
+
+#The degrees of freedom for the difference between the two models (our model vs. null): 
+with(mylogit_Lib, df.null - df.residual)
+
+#finding the p_value 
+with(mylogit_Lib, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+# our model fits significantly better than a null model 
 
